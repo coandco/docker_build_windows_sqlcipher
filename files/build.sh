@@ -109,11 +109,10 @@ strip_all()
 }
 
 # OpenSSL
-
 OPENSSL_PREFIX_DIR="$DEP_DIR/libopenssl"
-OPENSSL_VERSION=1.0.2s
+OPENSSL_VERSION=1.1.1g
 # hash from https://www.openssl.org/source/
-OPENSSL_HASH="cabd5c9492825ce5bd23f3c3aeed6a97f8142f606d893df216411f07d1abab96"
+OPENSSL_HASH="ddb04774f1e32f0c49751e21b67216ac87852ceb056b75209af2443400636d46"
 OPENSSL_FILENAME="openssl-$OPENSSL_VERSION.tar.gz"
 
 rm -rf "$OPENSSL_PREFIX_DIR"
@@ -125,7 +124,7 @@ bsdtar --no-same-owner --no-same-permissions -xf "$OPENSSL_FILENAME"
 rm $OPENSSL_FILENAME
 cd openssl*
 
-CONFIGURE_OPTIONS="--prefix=$OPENSSL_PREFIX_DIR shared"
+CONFIGURE_OPTIONS="--prefix=$OPENSSL_PREFIX_DIR --openssldir=${OPENSSL_PREFIX_DIR}/ssl shared"
 if [[ "$ARCH" == "x86_64" ]]
 then
   CONFIGURE_OPTIONS="$CONFIGURE_OPTIONS mingw64 --cross-compile-prefix=x86_64-w64-mingw32-"
@@ -147,8 +146,8 @@ rm -rf ./openssl*
 # SQLCipher
 
 SQLCIPHER_PREFIX_DIR="$DEP_DIR/libsqlcipher"
-SQLCIPHER_VERSION=v4.2.0
-SQLCIPHER_HASH="105c1b813f848da038c03647a8bfc9d42fb46865e6aaf4edfd46ff3b18cdccfc"
+SQLCIPHER_VERSION=v4.4.0
+SQLCIPHER_HASH="0924b2ae1079717954498bda78a30de20ce2a6083076b16214a711567821d148"
 SQLCIPHER_FILENAME="$SQLCIPHER_VERSION.tar.gz"
 
 rm -rf "$SQLCIPHER_PREFIX_DIR"
@@ -160,36 +159,16 @@ bsdtar --no-same-owner --no-same-permissions -xf "$SQLCIPHER_FILENAME"
 rm $SQLCIPHER_FILENAME
 cd sqlcipher*
 
-sed -i s/'LIBS="-lcrypto  $LIBS"'/'LIBS="-lcrypto -lgdi32  $LIBS"'/g configure
-sed -i s/'LIBS="-lcrypto $LIBS"'/'LIBS="-lcrypto -lgdi32  $LIBS"'/g configure
 sed -i s/'if test "$TARGET_EXEEXT" = ".exe"'/'if test ".exe" = ".exe"'/g configure
 sed -i 's|exec $PWD/mksourceid manifest|exec $PWD/mksourceid.exe manifest|g' tool/mksqlite3h.tcl
-
-# Do not remove trailing whitespace and dont replace tabs with spaces in the patch below,
-#  otherwise the patch will fail to apply
-> Makefile.in-patch cat << "EOF"
---- Makefile.in	2017-07-24 04:33:46.944080013 +0000
-+++ Makefile.in-patch	2017-07-24 04:50:47.340596990 +0000
-@@ -1074,7 +1074,7 @@
-    $(TOP)/ext/fts5/fts5_varint.c \
-    $(TOP)/ext/fts5/fts5_vocab.c  \
-
--fts5parse.c:	$(TOP)/ext/fts5/fts5parse.y lemon
-+fts5parse.c:	$(TOP)/ext/fts5/fts5parse.y lemon$(BEXE)
- 	cp $(TOP)/ext/fts5/fts5parse.y .
- 	rm -f fts5parse.h
- 	./lemon$(BEXE) $(OPTS) fts5parse.y
-
-EOF
-
-patch -l < Makefile.in-patch
 
 ./configure --host="$ARCH-w64-mingw32" \
             --prefix="$SQLCIPHER_PREFIX_DIR" \
             --disable-shared \
             --enable-tempstore=yes \
             CFLAGS="-O2 -g0 -DSQLITE_HAS_CODEC -I$OPENSSL_PREFIX_DIR/include/" \
-            LDFLAGS="$OPENSSL_PREFIX_DIR/lib/libcrypto.a -lcrypto -lgdi32 -L$OPENSSL_PREFIX_DIR/lib/"
+            LDFLAGS="$OPENSSL_PREFIX_DIR/lib/libcrypto.a -lcrypto -lgdi32 -L$OPENSSL_PREFIX_DIR/lib/" \
+            LIBS="-lgdi32 -lws2_32"
 
 sed -i s/"TEXE = $"/"TEXE = .exe"/ Makefile
 
